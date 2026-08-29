@@ -1,0 +1,4 @@
+build/
+mingw64/
+mingw32/
+venv/

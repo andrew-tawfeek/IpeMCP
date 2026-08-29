@@ -1,0 +1,51 @@
+name: Build Ipe on MacOS with Intel processor
+on: workflow_dispatch
+jobs:
+  Build:
+    runs-on: macos-latest
+    env:
+      OSXTARGET: -mmacosx-version-min=10.10 -target x86_64-apple-macos10.10
+      IPECONFIGMAK: macos-manual.mak
+      IPEQVORONOI: 1
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Download dependencies
+        run: |
+          wget https://github.com/otfried/osx-ipe/releases/download/2024.02.25/osxlibs-intel.tar.gz
+          tar xzf osxlibs-intel.tar.gz
+      - name: Compile
+        run: |
+          export IPEDEPS=`pwd`/osxlibs
+          cd src
+          make -j
+          make app
+      - name: Add dependencies
+        run: |
+          FW1=build/Ipe.app/Contents/Frameworks
+          FW2=build/IpePresenter.app/Contents/Frameworks
+          HEADERS=build/Ipe.app/Contents/Headers
+          install -m 0755 osxlibs/lib/libpng16.16.dylib $FW1
+          install -m 0755 osxlibs/lib/libpng16.16.dylib $FW2
+          install -m 0755 osxlibs/lib/libpixman-1.0.dylib $FW1
+          install -m 0755 osxlibs/lib/libpixman-1.0.dylib $FW2
+          install -m 0755 osxlibs/lib/libfreetype.6.dylib $FW1
+          install -m 0755 osxlibs/lib/libfreetype.6.dylib $FW2
+          install -m 0755 osxlibs/lib/libcairo.2.dylib $FW1
+          install -m 0755 osxlibs/lib/libcairo.2.dylib $FW2
+          install -m 0755 osxlibs/lib/liblua54.dylib $FW1
+          mkdir -p $HEADERS
+          install -m 0644 src/include/*.h $HEADERS
+          codesign --force --deep -s - build/Ipe.app
+          codesign --force --deep -s - build/IpePresenter.app
+      - name: Create archive
+        run: |
+          cd build
+          tar czvf ../ipe-mac-intel.tar.gz Ipe.app IpePresenter.app
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipe-mac-intel
+          path: ipe-mac-intel.tar.gz
+          retention-days: 2
+      - run: 'echo "Status ${{ job.status }}"'
