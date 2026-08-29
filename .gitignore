@@ -1,2 +1,4 @@
 /dist/
 /ipe-7.2.30.tar.gz
+__pycache__/
+*.py[cod]

@@ -29,6 +29,7 @@
 */
 
 #include "ipeui_common.h"
+#include "ipeui_mcp_win.h"
 #include "ipeui_wstring.h"
 
 #include <windowsx.h>
@@ -1336,6 +1337,11 @@ static const struct luaL_Reg ipeui_functions[] = {
   { "waitDialog", ipeui_wait },
   { "currentDateTime", ipeui_currentDateTime },
   { "startBrowser", ipeui_startBrowser },
+  { "startMcpBridge", ipeui_mcpStart },
+  { "stopMcpBridge", ipeui_mcpStop },
+  { "pollMcpBridge", ipeui_mcpPoll },
+  { "replyMcpBridge", ipeui_mcpReply },
+  { "mcpBridgeStatus", ipeui_mcpStatus },
   { nullptr, nullptr }
 };
 

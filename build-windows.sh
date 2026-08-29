@@ -40,6 +40,52 @@ usage() {
     "  ./$script_name --clean"
 }
 
+to_msys_path_from_wsl() {
+  local windows_path drive rest
+  windows_path="$(wslpath -w "$1")"
+  drive="${windows_path:0:1}"
+  rest="${windows_path:3}"
+  rest="${rest//\\//}"
+  printf '/%s/%s' "${drive,,}" "$rest"
+}
+
+forward_to_msys2_if_needed() {
+  command -v pacman >/dev/null 2>&1 && return
+
+  local msys_bash msys_workdir msys_script
+  if [[ -r /proc/sys/kernel/osrelease ]] &&
+     grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null &&
+     [[ -x /mnt/c/msys64/usr/bin/bash.exe || -x /c/msys64/usr/bin/bash.exe ]]; then
+    if [[ -x /mnt/c/msys64/usr/bin/bash.exe ]]; then
+      msys_bash=/mnt/c/msys64/usr/bin/bash.exe
+    else
+      msys_bash=/c/msys64/usr/bin/bash.exe
+    fi
+    msys_workdir="$(to_msys_path_from_wsl "$PWD")"
+    msys_script="$(to_msys_path_from_wsl "$script_dir/$script_name")"
+    export WSLENV="${WSLENV:+$WSLENV:}MSYSTEM:CHERE_INVOKING"
+  elif [[ -x /c/msys64/usr/bin/bash.exe ]]; then
+    msys_bash=/c/msys64/usr/bin/bash.exe
+    msys_workdir="$PWD"
+    msys_script="$script_dir/$script_name"
+  else
+    die "MSYS2 was not found. Install it with: winget install --id MSYS2.MSYS2 --exact"
+  fi
+
+  note "Forwarding this build to the MSYS2 UCRT64 toolchain"
+  export MSYSTEM=UCRT64
+  export CHERE_INVOKING=1
+  exec "$msys_bash" -lc 'cd -- "$1" && shift && exec "$@"' \
+    bash "$msys_workdir" "$msys_script" "$@"
+}
+
+# Git Bash calls itself MINGW64 but does not include pacman or a compiler.
+# WSL is also not the native Windows build environment. Transparently re-run
+# under an installed MSYS2 UCRT64 shell in either case.
+if [[ "${1:-}" != "-h" && "${1:-}" != "--help" ]]; then
+  forward_to_msys2_if_needed "$@"
+fi
+
 clean=0
 install_deps=1
 jobs="${JOBS:-}"
@@ -141,7 +187,10 @@ make_vars=(
   "IPEDEPS=$mingw_prefix"
   "CXX=g++"
   "CC=gcc"
-  "WINDRES=windres"
+  # A Git Bash -> MSYS2 handoff can leave POSIX pipe descriptors that the
+  # native windres subprocess cannot inherit. A temporary preprocessor file
+  # is equally valid and works reliably from Git Bash, WSL, and MSYS2 itself.
+  "WINDRES=windres --use-temp-file"
   "ZLIB_CFLAGS=$(pkg-config --cflags zlib)"
   "ZLIB_LIBS=$(pkg-config --libs zlib)"
   "FREETYPE_CFLAGS=$(pkg-config --cflags freetype2)"
@@ -159,6 +208,22 @@ make_vars=(
 if ((clean)); then
   note "Cleaning the MinGW build tree"
   make --directory="$source_dir/src" "${make_vars[@]}" clean
+fi
+
+# The top-level makefile only declares this prerequisite for cross-builds,
+# while the native MinGW resource files require it as well.
+icon_file="$source_dir/build/ipe.ico"
+if [[ ! -f "$icon_file" || "$source_dir/artwork/ipe.iconset/icon_512x512.png" -nt "$icon_file" ]]; then
+  note "Creating the Windows application icon"
+  mkdir -p -- "${icon_file%/*}"
+  icotool -c \
+    "$source_dir/artwork/ipe.iconset/icon_16x16.png" \
+    "$source_dir/artwork/ipe.iconset/icon_32x32.png" \
+    "$source_dir/artwork/ipe.iconset/icon_64x64.png" \
+    "$source_dir/artwork/ipe.iconset/icon_128x128.png" \
+    "$source_dir/artwork/ipe.iconset/icon_256x256.png" \
+    "$source_dir/artwork/ipe.iconset/icon_512x512.png" \
+    -o "$icon_file"
 fi
 
 note "Compiling Ipe with $jobs parallel jobs"
@@ -196,7 +261,8 @@ fi
 
 note "Assembling runnable bundle at $bundle_dir"
 install -d "$bundle_dir/bin" "$bundle_dir/ipelets" "$bundle_dir/lua" \
-  "$bundle_dir/scripts" "$bundle_dir/styles" "$bundle_dir/icons" "$bundle_dir/doc"
+  "$bundle_dir/scripts" "$bundle_dir/styles" "$bundle_dir/icons" \
+  "$bundle_dir/doc" "$bundle_dir/mcp"
 printf 'Created by %s\n' "$script_name" >"$bundle_marker"
 
 cp -a "$build_dir/bin/." "$bundle_dir/bin/"
@@ -211,6 +277,8 @@ cp -a "$source_dir/artwork/icons.ipe" "$source_dir/artwork/ipe_logo.ipe" \
   "$source_dir/artwork/ipe.iconset/icon_128x128.png" "$bundle_dir/icons/"
 cp -a "$source_dir/doc/gpl.txt" "$bundle_dir/doc/LICENSE.txt"
 cp -a "$source_dir/README.md" "$bundle_dir/README.md"
+cp -a "$script_dir/mcp/." "$bundle_dir/mcp/"
+cp -a "$script_dir/WINDOWS.md" "$bundle_dir/README-WINDOWS.md"
 
 # Copy every non-system DLL imported by the executables, Ipe libraries, and
 # ipelets. Recursing over newly copied DLLs makes the bundle independent of an

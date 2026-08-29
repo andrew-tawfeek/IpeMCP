@@ -33,6 +33,7 @@
 #define IPEBASE_H
 
 #include <cstdio>
+#include <cstdint>
 #include <vector>
 #include <algorithm>
 #include <memory>

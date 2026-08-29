@@ -17,13 +17,17 @@ endif
 CXXFLAGS += $(UI_CFLAGS) $(LUA_CFLAGS) $(DLL_CFLAGS) $(SPELL_CFLAGS)
 LIBS += $(UI_LIBS) $(LUA_LIBS) $(SPELL_LIBS)
 
+ifdef WIN32
+LIBS += -lws2_32
+endif
+
 all: $(TARGET)
 
 sources = ipeui_common.cpp
 cocoa_sources = ipeui_cocoa.cpp
 qt_sources = ipeui_qt.cpp
 moc_headers = ipeui_qt.h
-win_sources = ipeui_win.cpp
+win_sources = ipeui_win.cpp ipeui_mcp_win.cpp
 gtk_sources = ipeui_gtk.cpp
 
 $(TARGET): $(objects)
