@@ -20,7 +20,9 @@ local os = _G.os
 local io = _G.io
 local revertOriginal = _G.revertOriginal
 
-local default_port = tonumber(os.getenv("IPE_MCP_PORT")) or 49328
+-- Ipe's locale-independent tonumber requires a string, unlike Lua's standard
+-- tonumber(nil), so normalize an unset environment variable first.
+local default_port = tonumber(os.getenv("IPE_MCP_PORT") or "") or 49328
 if default_port < 1024 or default_port > 65535 then default_port = 49328 end
 
 ----------------------------------------------------------------------
@@ -32,6 +34,25 @@ local array_metatable = { __json_array = true }
 
 local function array(value)
   return setmetatable(value or {}, array_metatable)
+end
+
+local function decode_hex(value)
+  local result = 0
+  for index = 1, #value do
+    local byte = string.byte(value, index)
+    local digit
+    if byte >= 48 and byte <= 57 then
+      digit = byte - 48
+    elseif byte >= 65 and byte <= 70 then
+      digit = byte - 55
+    elseif byte >= 97 and byte <= 102 then
+      digit = byte - 87
+    else
+      return nil
+    end
+    result = result * 16 + digit
+  end
+  return result
 end
 
 local escapes = {
@@ -133,12 +154,12 @@ local function json_decode(text)
           position = position + 2
         elseif escaped == "u" then
           local hex = text:sub(position + 2, position + 5)
-          local codepoint = tonumber(hex, 16)
+          local codepoint = decode_hex(hex)
           if #hex ~= 4 or not codepoint then fail("invalid unicode escape") end
           position = position + 6
           if codepoint >= 0xd800 and codepoint <= 0xdbff
              and text:sub(position, position + 1) == "\\u" then
-            local low = tonumber(text:sub(position + 2, position + 5), 16)
+            local low = decode_hex(text:sub(position + 2, position + 5))
             if low and low >= 0xdc00 and low <= 0xdfff then
               codepoint = 0x10000 + (codepoint - 0xd800) * 0x400
                 + (low - 0xdc00)

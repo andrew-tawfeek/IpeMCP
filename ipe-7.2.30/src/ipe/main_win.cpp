@@ -192,10 +192,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     }
   }
 
-  lua_run_ipe(L, mainloop);
+  bool success = lua_run_ipe(L, mainloop);
 
   lua_close(L);
-  return 0;
+  return success ? 0 : 1;
 }
 
 // --------------------------------------------------------------------

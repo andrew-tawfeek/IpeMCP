@@ -376,6 +376,21 @@ rm -f -- "$smoke_module"
 [[ $smoke_status -eq 0 && "$smoke_output" == *"Ipe 7.2.30"* ]] || \
   die "smoke test failed (exit $smoke_status): $smoke_output"
 
+# Load the complete GUI Lua startup path without opening a window.  This catches
+# failures in bundled ipelets and resources that ipescript does not exercise.
+set +e
+gui_smoke_output="$(
+  cd -- "$bundle_dir/bin" &&
+    PATH="$bundle_dir/bin:$PATH" ./ipe.exe -show-configuration 2>&1
+)"
+gui_smoke_status=$?
+set -e
+
+[[ $gui_smoke_status -eq 0 && "$gui_smoke_output" == *"Ipe 7.2.30"* && \
+   "$gui_smoke_output" == *"Lua code:"* && \
+   "$gui_smoke_output" == *"Ipelets:"* ]] || \
+  die "GUI startup smoke test failed (exit $gui_smoke_status): $gui_smoke_output"
+
 exe_count="$(find "$bundle_dir/bin" -maxdepth 1 -type f -iname '*.exe' | wc -l)"
 dll_count="$(find "$bundle_dir/bin" -maxdepth 1 -type f -iname '*.dll' | wc -l)"
 note "Build complete: $bundle_dir/bin/ipe.exe"

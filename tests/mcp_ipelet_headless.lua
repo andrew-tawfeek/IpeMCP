@@ -2,6 +2,13 @@ local bundle_bin = assert(arg[1], "bundle bin directory is required")
 local ipelet_path = assert(arg[2], "MCP ipelet path is required")
 io.stdout:setvbuf("no")
 
+-- The Ipe application replaces Lua's tonumber with a locale-independent
+-- implementation that requires a string argument.
+local function ipe_tonumber(value)
+  assert(type(value) == "string", "string expected")
+  return tonumber(value)
+end
+
 assert(package.loadlib(bundle_bin .. "\\ipelua.dll", "luaopen_ipe"))()
 print("STEP native library loaded")
 
@@ -27,7 +34,7 @@ local environment = {
   ipairs = ipairs,
   pairs = pairs,
   print = print,
-  tonumber = tonumber,
+  tonumber = ipe_tonumber,
   tostring = tostring,
 }
 
