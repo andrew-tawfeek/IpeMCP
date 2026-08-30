@@ -209,7 +209,7 @@ class CompiledIntegrationTests(unittest.TestCase):
                     "-png",
                     "-resolution",
                     "96",
-                    str(ROOT / "ipe-7.2.30" / "artwork" / "ipe_logo.ipe"),
+                    str(ROOT / "tests" / "renderer_fixture.ipe"),
                     str(output),
                 ],
                 stdout=subprocess.PIPE,

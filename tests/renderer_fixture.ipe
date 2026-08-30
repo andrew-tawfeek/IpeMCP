@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE ipe SYSTEM "ipe.dtd">
+<ipe version="70230" creator="Ipe MCP integration test">
+<info created="D:20260830000000" modified="D:20260830000000"/>
+<ipestyle name="renderer-test">
+<layout paper="200 200" origin="0 0" frame="200 200"/>
+</ipestyle>
+<page>
+<layer name="alpha"/>
+<view layers="alpha" active="alpha"/>
+<path layer="alpha" stroke="black" fill="0.85" pen="2">
+20 20 m
+180 20 l
+180 180 l
+20 180 l
+h
+</path>
+<path layer="alpha" stroke="0.2 0.4 0.8" pen="4">
+20 20 m
+180 180 l
+20 180 m
+180 20 l
+</path>
+</page>
+</ipe>
