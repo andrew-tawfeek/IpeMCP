@@ -18,8 +18,10 @@ SERVER_PATH = ROOT / "mcp" / "ipe_mcp_server.py"
 BUNDLE_BIN = ROOT / "dist" / "ipe-7.2.30-windows-x64" / "bin"
 IPELET_PATH = ROOT / "ipe-7.2.30" / "src" / "ipelets" / "lua" / "mcp.lua"
 LUA = shutil.which("lua5.4")
-if LUA is None and Path("C:/msys64/ucrt64/bin/lua5.4.exe").is_file():
-    LUA = "C:/msys64/ucrt64/bin/lua5.4.exe"
+MSYS2_ROOT = Path(os.environ.get("MSYS2_ROOT", "C:/msys64"))
+MSYS2_LUA = MSYS2_ROOT / "ucrt64" / "bin" / "lua5.4.exe"
+if LUA is None and MSYS2_LUA.is_file():
+    LUA = str(MSYS2_LUA)
 SPEC = importlib.util.spec_from_file_location("ipe_mcp_server", SERVER_PATH)
 assert SPEC and SPEC.loader
 mcp = importlib.util.module_from_spec(SPEC)
@@ -201,7 +203,7 @@ class CompiledIntegrationTests(unittest.TestCase):
     def test_compiled_renderer_produces_a_real_png(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             output = Path(temporary_directory) / "ipe-render.png"
-            subprocess.run(
+            completed = subprocess.run(
                 [
                     str(BUNDLE_BIN / "iperender.exe"),
                     "-png",
@@ -212,9 +214,13 @@ class CompiledIntegrationTests(unittest.TestCase):
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                check=True,
                 timeout=30,
                 env=self.bundle_environment(),
+            )
+            self.assertEqual(
+                completed.returncode,
+                0,
+                completed.stderr.decode("utf-8", errors="replace"),
             )
             png = output.read_bytes()
             self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
