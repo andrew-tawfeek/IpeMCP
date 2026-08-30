@@ -2,3 +2,14 @@
 /ipe-7.2.30.tar.gz
 __pycache__/
 *.py[cod]
+.coverage
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+htmlcov/
+*.key
+*.p12
+*.pem
+*.pfx
